@@ -1,0 +1,16 @@
+-cpu=rx600
+-lang=c99
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\..\..\..\Source\portable\Renesas\RX600"
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\..\..\..\Source\include"
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\."
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\..\..\include"
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\..\..\Common\include"
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\.\include"
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\..\..\Common\ethernet\FreeTCPIP"
+-include="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\webserver"
+-change_message=information
+-output=obj="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\Debug\BlockQ.obj"
+-debug
+-optimize=0
+"E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\Common\Minimal\BlockQ.c"
+-nologo
