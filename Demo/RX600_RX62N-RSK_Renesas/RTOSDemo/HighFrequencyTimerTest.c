@@ -137,7 +137,7 @@ void vSetupHighFrequencyTimer( void )
 	CMT.CMSTR1.BIT.STR3 = 1;
 }
 /*-----------------------------------------------------------*/
-
+/**
 #pragma interrupt ( prvTimer2IntHandler( vect = _VECT( _CMT2_CMI2 ), enable ) )
 static void prvTimer2IntHandler( void )
 {
@@ -145,14 +145,13 @@ volatile unsigned short usCurrentCount;
 static unsigned short usMaxCount = 0;
 static unsigned long ulErrorCount = 0UL;
 
-	/* We use the timer 1 counter value to measure the clock cycles between
-	the timer 0 interrupts.  First stop the clock. */
+
 	CMT.CMSTR1.BIT.STR3 = 0;
 	nop();
 	nop();
 	usCurrentCount = timerTIMER_3_COUNT_VALUE;
 
-	/* Is this the largest count we have measured yet? */
+	
 	if( usCurrentCount > usMaxCount )
 	{
 		if( usCurrentCount > timerEXPECTED_DIFFERENCE_VALUE )
@@ -161,23 +160,23 @@ static unsigned long ulErrorCount = 0UL;
 		}
 		else
 		{
-			/* This should not happen! */
+		
 			ulErrorCount++;
 		}
 		
 		usMaxCount = usCurrentCount;
 	}
 
-	/* Used to generate the run time stats. */
+
 	ulHighFrequencyTickCount++;
 	
-	/* Clear the timer. */
+
 	timerTIMER_3_COUNT_VALUE = 0;
 	
-	/* Then start the clock again. */
+
 	CMT.CMSTR1.BIT.STR3 = 1;
 }
-
+****/
 
 
 
