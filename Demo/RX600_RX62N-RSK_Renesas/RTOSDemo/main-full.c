@@ -164,8 +164,9 @@
 /*** for test ****/
 int siTestCount = 0;    // 用来测试计数的
 int uiRestoreCount = 0;   // 用来计数
+unsigned char data = 0;
 /* Value to determine which task are implemented */
-#define mainTASK_IMPLEMENT 2
+#define mainTASK_IMPLEMENT 1
 
 /* Values that are passed into the reg test tasks using the task parameter.  The
 tasks check that the values are passed in correctly. */
@@ -337,6 +338,73 @@ void vSetupTimer2Interrupt( void )
 	/* Start the timer. */
 	CMT.CMSTR1.BIT.STR2 = 1;
 }
+
+/************** 开始任务3 *******************************************/
+void SCI6Setup()
+{
+	 MSTP_SCI6 = 0;  
+     // clear SCR     
+     SCI6.SCR.BYTE = 0;
+
+     /* set b6 bit for receiving serial data SCI6 */
+     PORT3.ICR.BIT.B3 = 1;               //Enable RXD work as input
+     PORT3.DDR.BIT.B2 = 1;               //set TXD working as output
+     // set SMR and SCMR
+
+     SCI6.SMR.BIT.CKS = 1;               // pclk / 4
+     SCI6.SMR.BIT.STOP = 0;               // 1 stop bit
+     SCI6.SMR.BIT.PE = 0;               // no parity
+     SCI6.SMR.BIT.CHR = 0;               // 8 data bits
+     SCI6.SMR.BIT.CM = 0;               // async mode
+
+     SCI6.SCMR.BYTE = 0X00;               // disable smart card mode
+
+     SCI6.SEMR.BIT.ABCS = 0;
+
+     // set value in BRR
+     SCI6.BRR = 38;               // set for 9600BPS with pclk/4
+                                   // (12000000/64*(2^2(n-1))*9600)-1, n=1
+     // wait bit interval ? ok to check status of previously set bit 
+     nop(); //using OS delay to wait 
+	 nop();
+	 nop();
+	 nop();
+
+     // set TE or RE in SCR to 1  
+     SCI6.SCR.BIT.RE = 1;     // enable receive
+     SCI6.SCR.BIT.TE = 0;     // disable transmit for now
+     SCI6.SCR.BIT.TEIE = 0;     // diable transmit end interrupt for now
+     SCI6.SCR.BIT.RIE = 1;     // enable receive interrupt request for now
+
+     // transfer starts
+	 _IPR( _SCI6_RXI6 ) = configKERNEL_INTERRUPT_PRIORITY;	
+	 ICU.IER[0x1D].BIT.IEN7 = 1;          //allow request to CPU for interruption
+}
+
+/* The 'enable' in the following line causes the compiler to generate code that
+re-enables interrupts on function entry.  This will allow interrupts to nest. */
+#pragma interrupt ( vSCI6_1InterruptHandler( vect = _VECT( _SCI6_RXI6 ), enable ) )
+void vSCI6_1InterruptHandler( void )
+{
+long vHigherPriorityTaskWoken;
+
+	siTestCount++;
+	data = SCI6.RDR;
+	xSemaphoreGiveFromISR( xBinarySemaphore, &vHigherPriorityTaskWoken );
+    //lHigherPriorityTaskWoken = xFirstTimerHandler();
+	
+	if( vHigherPriorityTaskWoken == pdTRUE )
+	{
+		/* 给出信号量以使得等待此信号量的任务解除阻塞。如果解出阻塞的任务的优先级高于当前任务的优先
+		级 – 强制进行一次任务切换，以确保中断直接返回到解出阻塞的任务(优选级更高)。
+		说明：在实际使用中， ISR中强制上下文切换的宏依赖于具体移植。此处调用的是基于Open Watcom DOS
+		移植的宏。其它平台下的移植可能有不同的语法要求。对于实际使用的平台，请参如数对应移植自带的示
+		例程序，以决定正确的语法和符号。
+		*/
+		portYIELD_FROM_ISR( vHigherPriorityTaskWoken );
+	}
+    
+}
 void main(void)
 {
 extern void HardwareSetup( void );     // ????为什么没有头文件也可以插入函数
@@ -377,12 +445,23 @@ extern void HardwareSetup( void );     // ????为什么没有头文件也可以插入函数
 	or not the correct/expected number of tasks are running at any given time. */
 	vCreateSuicidalTasks( mainCREATOR_TASK_PRIORITY );
 #else if mainTASK_IMPLEMENT == 1
-	xTaskCreate(prvHITTestTask, "hit_easyTask", configMINIMAL_STACK_SIZE, (void *) mainHIT_TEST_EASY_PARAMETER, mainuIP_TASK_PRIORITY, NULL);
-
-#else if mainTASK_IMPLEMENT == 2
+/***
 	HardwareSetup(); 
 	vSemaphoreCreateBinary( xBinarySemaphore );
 	vSetupTimer2Interrupt();
+	
+	if( xBinarySemaphore != NULL )
+	{
+		
+		xTaskCreate( vHandlerTask, "Handler", 1000, NULL, 3, NULL );
+		
+
+		vTaskStartScheduler();
+	}
+****/
+	HardwareSetup(); 
+	vSemaphoreCreateBinary( xBinarySemaphore );
+	SCI6Setup();
 	
 	if( xBinarySemaphore != NULL )
 	{

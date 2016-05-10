@@ -1,3 +1,3 @@
 -cpu=rx600
--output="E:\实验室资料\FreeRTOS\FreeRTOS_V9.0.0rc2\FreeRTOS_V9.0.0rc2\FreeRTOS\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\Debug\RTOSDemo.lib"
+-output="E:\实验室资料\实验室项目\207项目\主控板调试\FreeRTOSTest\Demo\RX600_RX62N-RSK_Renesas\RTOSDemo\Debug\RTOSDemo.lib"
 -head=runtime,math,stdio,stdlib,string
