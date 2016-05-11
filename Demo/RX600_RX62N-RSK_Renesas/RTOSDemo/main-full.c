@@ -161,12 +161,9 @@
 
 
 
-/*** for test ****/
-int siTestCount = 0;    // 用来测试计数的
-int uiRestoreCount = 0;   // 用来计数
-unsigned char data = 0;
+
 /* Value to determine which task are implemented */
-#define mainTASK_IMPLEMENT 1
+#define mainTASK_IMPLEMENT 0
 
 /* Values that are passed into the reg test tasks using the task parameter.  The
 tasks check that the values are passed in correctly. */
@@ -203,7 +200,7 @@ this file. */
 #define mainERROR_CYCLE_TIME		( 200 / portTICK_PERIOD_MS )
 
 /*  使用信号量进行ISR和Task进行切换   */
-xSemaphoreHandle xBinarySemaphore;
+extern xSemaphoreHandle xBinarySemaphore;
 /*
  * vApplicationMallocFailedHook() will only be called if
  * configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h.  It is a hook
@@ -273,195 +270,14 @@ by the reg test task. */
 const char *pcStatusMessage = "All tasks executing without error.";
 
 /*-----------------------------------------------------------*/
-/******* 与中断并行的任务 ****/
-static void vHandlerTask( void *pvParameters )
-{
-	/* As per most tasks, this task is implemented within an infinite loop. */
-	for( ;; )
-	{
-		/* 使用信号量等待一个事件。信号量在调度器启动之前，也即此任务执行之前就已被创建。任务被无超
-		时阻塞，所以此函数调用也只会在成功获取信号量之后才会返回。此处也没有必要检测返回值 */
-		uiRestoreCount++;
-		if(uiRestoreCount > 10000)
-		{
-			siTestCount = 0;	
-		}
-		xSemaphoreTake( xBinarySemaphore, portMAX_DELAY );
-		/* 程序运行到这里时，事件必然已经发生。本例的事件处理只是简单地打印输出一个信息 */
-		//vPrintString( "Handler task - Processing event.\r\n" );
-	}
-}
-/* The 'enable' in the following line causes the compiler to generate code that
-re-enables interrupts on function entry.  This will allow interrupts to nest. */
-#pragma interrupt ( vT2_1InterruptHandler( vect = _VECT( _CMT2_CMI2 ), enable ) )
-void vT2_1InterruptHandler( void )
-{
-long lHigherPriorityTaskWoken;
 
-	siTestCount++;
-	xSemaphoreGiveFromISR( xBinarySemaphore, &lHigherPriorityTaskWoken );
-    //lHigherPriorityTaskWoken = xFirstTimerHandler();
-	
-	if( lHigherPriorityTaskWoken == pdTRUE )
-	{
-		/* 给出信号量以使得等待此信号量的任务解除阻塞。如果解出阻塞的任务的优先级高于当前任务的优先
-		级 – 强制进行一次任务切换，以确保中断直接返回到解出阻塞的任务(优选级更高)。
-		说明：在实际使用中， ISR中强制上下文切换的宏依赖于具体移植。此处调用的是基于Open Watcom DOS
-		移植的宏。其它平台下的移植可能有不同的语法要求。对于实际使用的平台，请参如数对应移植自带的示
-		例程序，以决定正确的语法和符号。
-		*/
-		portYIELD_FROM_ISR( lHigherPriorityTaskWoken );
-	}
-    
-}
-
-void vSetupTimer2Interrupt( void )
-{
-	/* Enable compare match timer 0. */
-	MSTP( CMT2 ) = 0;
-
-	/* Interrupt on compare match. */
-	CMT2.CMCR.BIT.CMIE = 1;
-
-	/* Set the compare match value. */
-	CMT2.CMCOR = ( unsigned short ) (53999);
-
-	/* Divide the PCLK by 8. */
-	CMT2.CMCR.BIT.CKS = 0;
-
-	/* Enable the interrupt... */
-	ICU.IER[0x03].BIT.IEN6 = 1;          //允许向CPU请求中断
-    //ICU.IPR[0x06].BYTE =0x0d;            //中断优先级设定
-	/* ...and set its priority to the application defined kernel priority. */
-	_IPR( _CMT2_CMI2 ) = configKERNEL_INTERRUPT_PRIORITY;
-
-	/* Start the timer. */
-	CMT.CMSTR1.BIT.STR2 = 1;
-}
-
-/************** 开始任务3 *******************************************/
-void SCI6Setup()
-{
-	 MSTP_SCI6 = 0;  
-     // clear SCR     
-     SCI6.SCR.BYTE = 0;
-
-     /* set b6 bit for receiving serial data SCI6 */
-     PORT3.ICR.BIT.B3 = 1;               //Enable RXD work as input
-     PORT3.DDR.BIT.B2 = 1;               //set TXD working as output
-     // set SMR and SCMR
-
-     SCI6.SMR.BIT.CKS = 1;               // pclk / 4
-     SCI6.SMR.BIT.STOP = 0;               // 1 stop bit
-     SCI6.SMR.BIT.PE = 0;               // no parity
-     SCI6.SMR.BIT.CHR = 0;               // 8 data bits
-     SCI6.SMR.BIT.CM = 0;               // async mode
-
-     SCI6.SCMR.BYTE = 0X00;               // disable smart card mode
-
-     SCI6.SEMR.BIT.ABCS = 0;
-
-     // set value in BRR
-     SCI6.BRR = 38;               // set for 9600BPS with pclk/4
-                                   // (12000000/64*(2^2(n-1))*9600)-1, n=1
-     // wait bit interval ? ok to check status of previously set bit 
-     nop(); //using OS delay to wait 
-	 nop();
-	 nop();
-	 nop();
-
-     // set TE or RE in SCR to 1  
-     SCI6.SCR.BIT.RE = 1;     // enable receive
-     SCI6.SCR.BIT.TE = 0;     // disable transmit for now
-     SCI6.SCR.BIT.TEIE = 0;     // diable transmit end interrupt for now
-     SCI6.SCR.BIT.RIE = 1;     // enable receive interrupt request for now
-
-     // transfer starts
-	 _IPR( _SCI6_RXI6 ) = configKERNEL_INTERRUPT_PRIORITY;	
-	 ICU.IER[0x1D].BIT.IEN7 = 1;          //allow request to CPU for interruption
-}
-
-/* The 'enable' in the following line causes the compiler to generate code that
-re-enables interrupts on function entry.  This will allow interrupts to nest. */
-#pragma interrupt ( vSCI6_1InterruptHandler( vect = _VECT( _SCI6_RXI6 ), enable ) )
-void vSCI6_1InterruptHandler( void )
-{
-long vHigherPriorityTaskWoken;
-
-	siTestCount++;
-	data = SCI6.RDR;
-	xSemaphoreGiveFromISR( xBinarySemaphore, &vHigherPriorityTaskWoken );
-    //lHigherPriorityTaskWoken = xFirstTimerHandler();
-	
-	if( vHigherPriorityTaskWoken == pdTRUE )
-	{
-		/* 给出信号量以使得等待此信号量的任务解除阻塞。如果解出阻塞的任务的优先级高于当前任务的优先
-		级 – 强制进行一次任务切换，以确保中断直接返回到解出阻塞的任务(优选级更高)。
-		说明：在实际使用中， ISR中强制上下文切换的宏依赖于具体移植。此处调用的是基于Open Watcom DOS
-		移植的宏。其它平台下的移植可能有不同的语法要求。对于实际使用的平台，请参如数对应移植自带的示
-		例程序，以决定正确的语法和符号。
-		*/
-		portYIELD_FROM_ISR( vHigherPriorityTaskWoken );
-	}
-    
-}
 void main(void)
 {
 extern void HardwareSetup( void );     // ????为什么没有头文件也可以插入函数
-
+extern void vHandlerTask( void *pvParameters );
 #if mainTASK_IMPLEMENT == 0
-	/* Renesas provided CPU configuration routine.  The clocks are configured in
-	here. */
-	HardwareSetup();       // 和之前一样把Renesaa的文件配置好就行
-
-	/* Turn all LEDs off. */
-	vParTestInitialise();    // 各个引脚的Value
-
-	/* Start the reg test tasks which test the context switching mechanism. */
-	xTaskCreate( prvRegTest1Task, "RegTst1", configMINIMAL_STACK_SIZE, ( void * ) mainREG_TEST_1_PARAMETER, tskIDLE_PRIORITY, NULL );
-	xTaskCreate( prvRegTest2Task, "RegTst2", configMINIMAL_STACK_SIZE, ( void * ) mainREG_TEST_2_PARAMETER, tskIDLE_PRIORITY, NULL );
-
-	/* The web server task. */
-	xTaskCreate( vuIP_Task, "uIP", mainuIP_STACK_SIZE, NULL, mainuIP_TASK_PRIORITY, NULL );
-
-	/* Start the check task as described at the top of this file. */
-	xTaskCreate( prvCheckTask, "Check", configMINIMAL_STACK_SIZE * 3, NULL, mainCHECK_TASK_PRIORITY, NULL );
-
-	/* Create the standard demo tasks. */
-	vStartBlockingQueueTasks( mainBLOCK_Q_PRIORITY );
-	vCreateBlockTimeTasks();
-	vStartSemaphoreTasks( mainSEM_TEST_PRIORITY );
-	vStartPolledQueueTasks( mainQUEUE_POLL_PRIORITY );
-	vStartIntegerMathTasks( mainINTEGER_TASK_PRIORITY );
-	vStartGenericQueueTasks( mainGEN_QUEUE_TASK_PRIORITY );
-	vStartLEDFlashTasks( mainFLASH_TASK_PRIORITY );
-	vStartQueuePeekTasks();
-	vStartRecursiveMutexTasks();
-	vStartInterruptQueueTasks();
-	vStartMathTasks( mainFLOP_TASK_PRIORITY );
-
-	/* The suicide tasks must be created last as they need to know how many
-	tasks were running prior to their creation in order to ascertain whether
-	or not the correct/expected number of tasks are running at any given time. */
-	vCreateSuicidalTasks( mainCREATOR_TASK_PRIORITY );
-#else if mainTASK_IMPLEMENT == 1
-/***
 	HardwareSetup(); 
-	vSemaphoreCreateBinary( xBinarySemaphore );
-	vSetupTimer2Interrupt();
-	
-	if( xBinarySemaphore != NULL )
-	{
-		
-		xTaskCreate( vHandlerTask, "Handler", 1000, NULL, 3, NULL );
-		
-
-		vTaskStartScheduler();
-	}
-****/
-	HardwareSetup(); 
-	vSemaphoreCreateBinary( xBinarySemaphore );
-	SCI6Setup();
+	vSemaphoreCreateBinary( xBinarySemaphore );           // 信号量必须要在main函数里面创建
 	
 	if( xBinarySemaphore != NULL )
 	{
@@ -471,8 +287,7 @@ extern void HardwareSetup( void );     // ????为什么没有头文件也可以插入函数
 		
 		/* Start the scheduler so the created tasks start executing. */
 		vTaskStartScheduler();
-	}
-	
+	}	
 #endif
 	/* Start the tasks running. */
 	vTaskStartScheduler();
